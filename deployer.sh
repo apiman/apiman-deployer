@@ -30,20 +30,20 @@ then
   cd elasticsearch-1.7.1
   ./bin/plugin -i elasticsearch/marvel/latest
   echo 'marvel.agent.enabled: false' >> ./config/elasticsearch.yml
-  sed -i "s/cluster.name=elasticsearch/cluster.name=apiman/g" config/elasticsearch.yml
+  sed -i "s/#cluster.name: elasticsearch/cluster.name: apiman/g" config/elasticsearch.yml
 
-  echo "###############################################################"
-  echo "# Installation complete. You can now start up Elasticsearch   #"
-  echo "# with the following command:                                 #"
-  echo "#                                                             #"
-  echo "#    ./bin/elasticsearch                                      #"
-  echo "#                                                             #"
-  echo "# or add the -d option to start Elasticsearch in the          #"
-  echo "# background.  Please note: SSL and Authentication have not   #"
-  echo "# been enabled.  We recommend you enable these feature in     #"
-  echo "# elasticsearch if the network between apiman and ES is not   #"
-  echo "# secure.                                                     #"
-  echo "###############################################################"
+  echo "####################################################################"
+  echo "# Installation complete. You can now start up Elasticsearch        #"
+  echo "# with the following command:                                      #"
+  echo "#                                                                  #"
+  echo "#    ~/apiman-elasticsearch/elasticsearch-1.7.1/bin/elasticsearch  #"
+  echo "#                                                                  #"
+  echo "# or add the -d option to start Elasticsearch in the background.   #"
+  echo "#                                                                  #"
+  echo "# Please note: SSL and Authentication have *not* been enabled.     #"
+  echo "# We recommend you enable these feature in elasticsearch if the    #"
+  echo "# network between apiman and Elasticsearch is not secure.          #"
+  echo "####################################################################"
   
 fi
 
