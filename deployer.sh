@@ -1,12 +1,13 @@
 #!/bin/sh
 
 APIMAN_VERSION=1.1.6.Final
+ELASTIC_VERSION=1.7.1
 
 echo "###############################################################"
 echo "# Welcome to the apiman deployer.  Use this utility to deploy #"
 echo "# a single apiman component onto a target system.             #"
 echo "#                                                             #"
-echo "# NOTE: this script deploys apiman version 1.1.6.Final        #"
+echo "# NOTE: this script deploys apiman version $APIMAN_VERSION        #"
 echo "###############################################################"
 echo ""
 echo ""
@@ -23,13 +24,13 @@ read -p "Which component would you like to deploy? " COMPONENT
 if [ "x$COMPONENT" = "x1" ]
 then
   echo "###############################################################"
-  echo "# Installing Elasticsearch 1.7.1 for apiman...                #"
+  echo "# Installing Elasticsearch $ELASTIC_VERSION for apiman...                #"
   echo "###############################################################"
   mkdir ~/apiman-elasticsearch
   cd ~/apiman-elasticsearch
-  curl https://download.elastic.co/elasticsearch/elasticsearch/elasticsearch-1.7.1.zip -o elasticsearch-1.7.1.zip
-  unzip elasticsearch-1.7.1.zip
-  cd elasticsearch-1.7.1
+  curl https://download.elastic.co/elasticsearch/elasticsearch/elasticsearch-$ELASTIC_VERSION.zip -o elasticsearch-$ELASTIC_VERSION.zip
+  unzip elasticsearch-$ELASTIC_VERSION.zip
+  cd elasticsearch-$ELASTIC_VERSION
   ./bin/plugin -i elasticsearch/marvel/latest
   echo 'marvel.agent.enabled: false' >> ./config/elasticsearch.yml
   sed -i "s/#cluster.name: elasticsearch/cluster.name: apiman/g" config/elasticsearch.yml
@@ -38,7 +39,7 @@ then
   echo "# Installation complete. You can now start up Elasticsearch        #"
   echo "# with the following command:                                      #"
   echo "#                                                                  #"
-  echo "    ~/apiman-elasticsearch/elasticsearch-1.7.1/bin/elasticsearch"
+  echo "    ~/apiman-elasticsearch/elasticsearch-$ELASTIC_VERSION/bin/elasticsearch"
   echo "#                                                                  #"
   echo "# or add the -d option to start Elasticsearch in the background.   #"
   echo "#                                                                  #"
@@ -54,8 +55,26 @@ fi
 if [ "x$COMPONENT" = "x2" ]
 then
   echo "###############################################################"
-  echo "# (Keycloak) NOT YET SUPPORTED :(                             #"
+  echo "# Installing Keycloak for apiman...                           #"
   echo "###############################################################"
+  echo ""
+  mkdir ~/apiman-keycloak-$APIMAN_VERSION
+  cd ~/apiman-keycloak-$APIMAN_VERSION
+  curl http://downloads.jboss.org/wildfly/8.2.0.Final/wildfly-8.2.0.Final.zip -o wildfly-8.2.0.Final.zip
+  curl http://downloads.jboss.org/apiman/$APIMAN_VERSION/apiman-distro-wildfly8-$APIMAN_VERSION-overlay.zip -o apiman-distro-wildfly8-$APIMAN_VERSION-overlay.zip
+  unzip wildfly-8.2.0.Final.zip
+  unzip -o apiman-distro-wildfly8-$APIMAN_VERSION-overlay.zip -d wildfly-8.2.0.Final
+  cd wildfly-8.2.0.Final
+  rm -f standalone/deployments/apiman*
+
+  echo "####################################################################"
+  echo "# Installation complete. You can now start up Keycloak for apiman  #"
+  echo "# with the following commands:                                     #"
+  echo "#                                                                  #"
+  echo "    cd ~/apiman-keycloak-$APIMAN_VERSION/wildfly-8.2.0.Final"
+  echo "    ./bin/standalone.sh -b 0.0.0.0 -c standalone-apiman.xml"
+  echo "#                                                                  #"
+  echo "####################################################################"
 fi
 
 
@@ -121,9 +140,9 @@ then
   mkdir ~/apiman-gateway-$APIMAN_VERSION
   cd ~/apiman-gateway-$APIMAN_VERSION
   curl http://downloads.jboss.org/wildfly/8.2.0.Final/wildfly-8.2.0.Final.zip -o wildfly-8.2.0.Final.zip
-  curl http://downloads.jboss.org/apiman/1.1.6.Final/apiman-distro-wildfly8-1.1.6.Final-overlay.zip -o apiman-distro-wildfly8-1.1.6.Final-overlay.zip
+  curl http://downloads.jboss.org/apiman/$APIMAN_VERSION/apiman-distro-wildfly8-$APIMAN_VERSION-overlay.zip -o apiman-distro-wildfly8-$APIMAN_VERSION-overlay.zip
   unzip wildfly-8.2.0.Final.zip
-  unzip -o apiman-distro-wildfly8-1.1.6.Final-overlay.zip -d wildfly-8.2.0.Final
+  unzip -o apiman-distro-wildfly8-$APIMAN_VERSION-overlay.zip -d wildfly-8.2.0.Final
   cd wildfly-8.2.0.Final
   rm -f standalone/deployments/apiman-ds.xml
   rm -f standalone/deployments/apiman-es.war
@@ -235,9 +254,9 @@ then
   mkdir ~/apiman-manager-$APIMAN_VERSION
   cd ~/apiman-manager-$APIMAN_VERSION
   curl http://downloads.jboss.org/wildfly/8.2.0.Final/wildfly-8.2.0.Final.zip -o wildfly-8.2.0.Final.zip
-  curl http://downloads.jboss.org/apiman/1.1.6.Final/apiman-distro-wildfly8-1.1.6.Final-overlay.zip -o apiman-distro-wildfly8-1.1.6.Final-overlay.zip
+  curl http://downloads.jboss.org/apiman/$APIMAN_VERSION/apiman-distro-wildfly8-$APIMAN_VERSION-overlay.zip -o apiman-distro-wildfly8-$APIMAN_VERSION-overlay.zip
   unzip wildfly-8.2.0.Final.zip
-  unzip -o apiman-distro-wildfly8-1.1.6.Final-overlay.zip -d wildfly-8.2.0.Final
+  unzip -o apiman-distro-wildfly8-$APIMAN_VERSION-overlay.zip -d wildfly-8.2.0.Final
   cd wildfly-8.2.0.Final
   rm -f standalone/deployments/apiman-es.war
   rm -f standalone/deployments/apiman-gateway-api.war
