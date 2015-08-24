@@ -47,6 +47,15 @@ then
   echo "# We recommend you enable these feature in elasticsearch if the    #"
   echo "# network between apiman and Elasticsearch is not secure.          #"
   echo "####################################################################"
+  echo ""
+  echo "Next Steps:"
+  echo "  -> Log in to the Keycloak admin console"
+  echo "  -> Select the *apiman* realm"
+  echo "  -> Click the *clients* left-nav item"
+  echo "  -> Choose the *apimanui* client"
+  echo "  -> Add the public URL of your API Manager UI as a valid redirect URL"
+  echo ""
+  echo "Enjoy apiman!"
   
 fi
 
@@ -297,5 +306,14 @@ then
   echo "    ./bin/standalone.sh -b 0.0.0.0 -c standalone-apiman.xml"
   echo "#                                                                  #"
   echo "####################################################################"
+  echo ""
+  echo "Next Steps:"
+  echo "  -> Log in to the API Manager"
+  echo "  -> Navigate to the Gateway Config page in the API Manager admin UI"
+  echo "  -> Update the entry for The Gateway to point to your production"
+  echo "     API Gateway instance"
+  echo ""
+  echo "Enjoy apiman!"
+  
 fi
 
