@@ -293,7 +293,6 @@ then
     sed -i "s/5432/$DATABASE_PORT/g" ~/apiman-manager-$APIMAN_VERSION/wildfly-8.2.0.Final/standalone/deployments/apiman-ds.xml 
   fi
   sed -i "s/^apiman.hibernate.dialect=.*$/apiman.hibernate.dialect=$HIBERNATE_DIALECT/g" ~/apiman-manager-$APIMAN_VERSION/wildfly-8.2.0.Final/standalone/configuration/apiman.properties
-  sed -i "s/jdbc\/ApiManagerDS/java\:jboss\/datasources\/apiman-manager/g" ~/apiman-manager-$APIMAN_VERSION/wildfly-8.2.0.Final/standalone/deployments/apiman-ds.xml 
   sed -i "s/DBUSER/$DATABASE_USER/g" ~/apiman-manager-$APIMAN_VERSION/wildfly-8.2.0.Final/standalone/deployments/apiman-ds.xml 
   sed -i "s/DBPASS/$DATABASE_PASSWORD/g" ~/apiman-manager-$APIMAN_VERSION/wildfly-8.2.0.Final/standalone/deployments/apiman-ds.xml 
 
