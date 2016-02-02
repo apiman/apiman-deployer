@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #
-# Instructions to install locally Apiman Manager and Gateway, ElasticSearch and Keycloak Server
+# Instructions to install locally Apiman Manager, Apiman Gateway, ElasticSearch and Keycloak Server
 #
 
 #
@@ -10,7 +10,6 @@
 read -p "Directory to install the components (default: home directory): " INSTALL_DIRECTORY
 INSTALL_DIRECTORY=${INSTALL_DIRECTORY:-~}
 echo "Components will be installed here : $INSTALL_DIRECTORY"
-
 
 read -p "Please enter the version of Apiman to be installed (default: 1.2.1): " APIMAN_VERSION
 APIMAN_VERSION=${APIMAN_VERSION:-1.2.1.Final}
@@ -25,6 +24,8 @@ WILDFLY_VERSION=${WILDFLY_VERSION:-9.0.2.Final}
 echo $WILDFLY_VERSION
 echo ""
 echo "Next steps ..."
+
+unamestr=`uname`
 
 COMPONENT=""
 
@@ -53,8 +54,10 @@ while [[ "$COMPONENT" != "5" ]]; do
 		echo "###############################################################"
 		echo "# Installing Elasticsearch $ELASTIC_VERSION for apiman...     #"
 		echo "###############################################################"
-		rm -rf $INSTALL_DIRECTORY/apiman-elasticsearch-$ELASTIC_VERSION
-		mkdir $INSTALL_DIRECTORY/apiman-elasticsearch-$ELASTIC_VERSION
+		if [ -d "$INSTALL_DIRECTORY/apiman-elasticsearch-$ELASTIC_VERSION" ]; then
+		  rm -rf $INSTALL_DIRECTORY/apiman-elasticsearch-$ELASTIC_VERSION
+		fi
+		mkdir -p $INSTALL_DIRECTORY/apiman-elasticsearch-$ELASTIC_VERSION
 		cd $INSTALL_DIRECTORY/apiman-elasticsearch-$ELASTIC_VERSION
 		curl https://download.elastic.co/elasticsearch/elasticsearch/elasticsearch-$ELASTIC_VERSION.zip -o elasticsearch-$ELASTIC_VERSION.zip
 		unzip elasticsearch-$ELASTIC_VERSION.zip
@@ -84,8 +87,10 @@ while [[ "$COMPONENT" != "5" ]]; do
       echo "# Installing Keycloak for apiman...                           #"
       echo "###############################################################"
       echo ""
-      rm -rf $INSTALL_DIRECTORY/apiman-keycloak-$APIMAN_VERSION
-      mkdir $INSTALL_DIRECTORY/apiman-keycloak-$APIMAN_VERSION
+      if [ -d "$INSTALL_DIRECTORY/apiman-keycloak-$APIMAN_VERSION" ]; then
+		  rm -rf rm -rf $INSTALL_DIRECTORY/apiman-keycloak-$APIMAN_VERSION
+	  fi
+      mkdir -p $INSTALL_DIRECTORY/apiman-keycloak-$APIMAN_VERSION
       cd $INSTALL_DIRECTORY/apiman-keycloak-$APIMAN_VERSION
       curl http://downloads.jboss.org/wildfly/${WILDFLY_VERSION}/wildfly-${WILDFLY_VERSION}.zip -o wildfly-${WILDFLY_VERSION}.zip
       curl http://downloads.jboss.org/apiman/$APIMAN_VERSION/apiman-distro-wildfly9-$APIMAN_VERSION-overlay.zip -o apiman-distro-wildfly9-$APIMAN_VERSION-overlay.zip
@@ -101,7 +106,11 @@ while [[ "$COMPONENT" != "5" ]]; do
 	  # Apiman Gateway offset: 100 (-> 8180, 8543)
 	  # Apiman Keycloak Server offset: 200 (-> 8280, 8643)
 	  #
-      sed -i "s/jboss.socket.binding.port-offset:0/jboss.socket.binding.port-offset:200/g" standalone/configuration/standalone-apiman.xml
+      if [[ "$unamestr" == 'Linux' ]]; then
+        sed -i "s/jboss.socket.binding.port-offset:0/jboss.socket.binding.port-offset:200/g" standalone/configuration/standalone-apiman.xml
+      elif [[ "$unamestr" == 'Darwin' ]]; then
+        sed -i '' "s/jboss.socket.binding.port-offset:0/jboss.socket.binding.port-offset:200/g" standalone/configuration/standalone-apiman.xml
+      fi
 
       echo "####################################################################"
       echo "# Installation complete. You can now start up Keycloak for apiman  #"
@@ -119,7 +128,6 @@ while [[ "$COMPONENT" != "5" ]]; do
       echo "# Installing apiman : API Gateway...                          #"
       echo "###############################################################"
       echo ""
-      echo ""
 
 	  #
       # Step 0: Configure Gateway Public Endpoint
@@ -127,14 +135,10 @@ while [[ "$COMPONENT" != "5" ]]; do
       echo "You need to let us know the public endpoint for the API"
       echo "Gateway.  The public endpoint is the URL that an API client"
       echo "would use to connect to the API Gateway.  An example is:"
-      echo "    https://localhost:8643/apiman-gateway/"
+      echo "    https://localhost:8543/apiman-gateway/"
       echo ""
-      read -p "Public Endpoint: " GATEWAY_PUBLIC_ENDPOINT
-      if [ "x$GATEWAY_PUBLIC_ENDPOINT" = "x" ]
-      then
-        echo "Sorry, invalid endpoint!  Exiting..."
-        exit 1
-      fi
+      read -p "Public Endpoint (default: https://localhost:8543/apiman-gateway/) : " GATEWAY_PUBLIC_ENDPOINT
+      GATEWAY_PUBLIC_ENDPOINT=${GATEWAY_PUBLIC_ENDPOINT:-https://localhost:8543/apiman-gateway}
 
       #
       # Step 1: Setup URL to access Keycloak Security Server (by default it runs inside the Apiman Manager - https://localhostg:8443/auth)
@@ -144,36 +148,38 @@ while [[ "$COMPONENT" != "5" ]]; do
       echo "Now you need to tell us where your Keycloak authentication"
       echo "server is located.  This should be in the form of a URL."
       echo "An example might be:"
-      echo "    https://keycloak.acme.org/auth"
+      echo "    https://localhost:8443/auth"
       echo ""
-      read -p "Keycloak URL: " KEYCLOAK_URL
-      if [ "x$KEYCLOAK_URL" = "x" ]
-      then
-        echo "Sorry, invalid URL!  Exiting..."
-        exit 1
-      fi
-      KEYCLOAK_URL_ESC="$(echo $KEYCLOAK_URL | sed 's/[\/]/\\\//g')"
+	  read -p "Keycloak URL (default https://localhost:8443/auth for local usage): " KEYCLOAK_URL
+	  KEYCLOAK_URL=${KEYCLOAK_URL:-https://localhost:8443/auth}
+	  KEYCLOAK_URL_ESC="$(echo $KEYCLOAK_URL | sed 's/[\/]/\\\//g')"
+
+	  echo "Keycloak URL : $KEYCLOAK_URL; escaped : $KEYCLOAK_URL_ESC"
 
       #
       # Step 2: Setup URL to access ElasticSearch Server - https://localhost:9200/
 	  #
-      echo ""
-      echo ""
-      echo "Finally, please clue us in on the location of your Elasticsearch"
-      echo "instance.  Please include the port - Elasticsearch typically"
-      echo "listens on port 9200."
-      echo "An example might be:"
-      echo "    http://localhost:9200"
-      echo ""
-      read -p "Elastic URL: " ELASTIC_URL
-      if [ "x$ELASTIC_URL" = "x" ]
-      then
-        echo "Sorry, invalid URL!  Exiting..."
-        exit 1
+	  echo ""
+	  echo ""
+	  echo "Finally, please clue us in on the location of your Elasticsearch"
+	  echo "instance.  Please include the port - Elasticsearch typically"
+	  echo "listens on port 9200."
+	  echo "An example might be:"
+	  echo "    http://localhost:9200"
+	  echo ""
+	  read -p "Elastic URL (default: http://localhost:9200): " ELASTIC_URL
+	  ELASTIC_URL=${ELASTIC_URL:-http://localhost:9200}
+
+      if [[ "$unamestr" == 'Linux' ]]; then
+        ES_PROTOCOL=`echo $ELASTIC_URL | sed -r 's/(https?).*/\1/g'`
+        ES_HOST=`echo $ELASTIC_URL | sed -r 's/https?:\/\/([^\:^\/]+)\:?[0-9]*\/?.*/\1/g'`
+        ES_PORT=`echo $ELASTIC_URL | sed -r 's/https?\:\/\/[^\:]+\:?([0-9]+)?.*/\1/g'`
+      elif [[ "$unamestr" == 'Darwin' ]]; then
+        ES_PROTOCOL=`echo $ELASTIC_URL | sed -E 's/(https?).*/\1/g'`
+        ES_HOST=`echo $ELASTIC_URL | sed -E 's/https?:\/\/([^\:^\/]+)\:?[0-9]*\/?.*/\1/g'`
+        ES_PORT=`echo $ELASTIC_URL | sed -E 's/https?\:\/\/[^\:]+\:?([0-9]+)?.*/\1/g'`
       fi
-      ES_PROTOCOL=`echo $ELASTIC_URL | sed -r 's/(https?).*/\1/g'`
-      ES_HOST=`echo $ELASTIC_URL | sed -r 's/https?:\/\/([^\:^\/]+)\:?[0-9]*\/?.*/\1/g'`
-      ES_PORT=`echo $ELASTIC_URL | sed -r 's/https?\:\/\/[^\:]+\:?([0-9]+)?.*/\1/g'`
+
       echo ""
       echo "Thanks!  Will use the following elasticsearch info:"
       echo "---------------------------------------------------------"
@@ -187,8 +193,9 @@ while [[ "$COMPONENT" != "5" ]]; do
       #
       # Step 3: Download and unzip Wildfly, Apiman
 	  #
-
-      rm -rf $INSTALL_DIRECTORY/apiman-gateway-$APIMAN_VERSION
+      if [ -d "$INSTALL_DIRECTORY/apiman-gateway-$APIMAN_VERSION" ]; then
+		  rm -rf $INSTALL_DIRECTORY/apiman-gateway-$APIMAN_VERSION
+	  fi
       mkdir $INSTALL_DIRECTORY/apiman-gateway-$APIMAN_VERSION
       cd $INSTALL_DIRECTORY/apiman-gateway-$APIMAN_VERSION
       curl http://downloads.jboss.org/wildfly/${WILDFLY_VERSION}/wildfly-${WILDFLY_VERSION}.zip -o wildfly-${WILDFLY_VERSION}.zip
@@ -206,48 +213,52 @@ while [[ "$COMPONENT" != "5" ]]; do
       rm -f standalone/deployments/apimanui.war
 
       #
-      # Step 5: Configure apiman.properties and standalone-apiman.xml files
-	  #
-      sed -i "s/<enabled>true<\/enabled>/<enabled>false<\/enabled>/g" standalone/configuration/standalone-apiman.xml
+      # Step 5. Disabling the keycloak Server as we will use an external
+      #
+      # <subsystem xmlns="urn:jboss:domain:keycloak-server:1.1">
+      #     <web-context>auth</web-context>
+      # </subsystem>
+      if [[ "$unamestr" == 'Linux' ]]; then
+        sed -i "s/<kc\:auth-server-url>\/auth<\/kc\:auth-server-url>/<kc\:auth-server-url>$KEYCLOAK_URL_ESC<\/kc\:auth-server-url>/g" standalone/configuration/standalone-apiman.xml
+      elif [[ "$unamestr" == 'Darwin' ]]; then
+        sed -i '' "s/\(<auth-server-url>\).*\(<\/auth-server-url\)/\1$KEYCLOAK_URL_ESC\2/" standalone/configuration/standalone-apiman.xml
+      fi
 
-      #<!-- <subsystem xmlns="urn:jboss:domain:keycloak-server:1.1">
-#          <web-context>auth</web-context>
-#        </subsystem>
-#
-#           <realm-public-key>MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxyG61ohrfJQKNmDA/ePZtqZVpPXjwn3k3T+iWiTvMsxW2+WlnqIEmL5qZ09DMhBH9r50WZRO2gVoCb657Er9x0vfD6GNf/47XU2y33TX8axhP+hSwkv/VViaDlu4jQrfgPWz/FXMjWIZxg1xQS+nOBF2ScCRYWNQ/ZnUNnvrq8dGC2/AlyeYcgDUOdwlJuvgkGlF0QoVPQiRPurR3RwlG+BjL8JB3hbaAZhdJqwqApmGQbcpgLj2tODnlrZnEAp5cPPU/lgqCE1OOp78BAEiE91ZLPl/+D8qDHk+Maz0Io3bkeRZMXPpvtbL3qN+3GlF8Yz264HDSsTNrH+nd19tFQIDAQAB</realm-public-key>
-#            <auth-server-url>/auth</auth-server-url>
-#            <ssl-required>none</ssl-required>
-#            <enable-cors>false</enable-cors>
-#            <principal-attribute>preferred_username</principal-attribute>
-#          </realm>
-#          -->
-#              <realm name="apiman">
-#  <realm-public-key>MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxyG61ohrfJQKNmDA/ePZtqZVpPXjwn3k3T+iWiTvMsxW2+WlnqIEmL5qZ09DMhBH9r50WZRO2gVoCb657Er9x0vfD6GNf/47XU2y33TX8axhP+hSwkv/VViaDlu4jQrfgPWz/FXMjWIZxg1xQS+nOBF2ScCRYWNQ/ZnUNnvrq8dGC2/AlyeYcgDUOdwlJuvgkGlF0QoVPQiRPurR3RwlG+BjL8JB3hbaAZhdJqwqApmGQbcpgLj2tODnlrZnEAp5cPPU/lgqCE1OOp78BAEiE91ZLPl/+D8qDHk+Maz0Io3bkeRZMXPpvtbL3qN+3GlF8Yz264HDSsTNrH+nd19tFQIDAQAB</realm-public-key>
-#  <auth-server-url>https://localhost:8443/auth</auth-server-url>
-#  <ssl-required>none</ssl-required>
-##  <enable-cors>false</enable-cors>
-#  <principal-attribute>preferred_username</principal-attribute>
-#</realm>
+      #
+      # Step 6. Configure External ElasticSearch Server
+      #
+      sed -i '' "s/apiman.es.protocol=.*$/apiman.es.protocol=$ES_PROTOCOL/g" standalone/configuration/apiman.properties
+      sed -i '' "s/apiman.es.host=.*$/apiman.es.host=$ES_HOST/g" standalone/configuration/apiman.properties
+      sed -i '' "s/apiman.es.port=.*$/apiman.es.port=$ES_PORT/g" standalone/configuration/apiman.properties
 
-      sed -i "s/<kc\:auth-server-url>\/auth<\/kc\:auth-server-url>/<kc\:auth-server-url>$KEYCLOAK_URL_ESC<\/kc\:auth-server-url>/g" standalone/configuration/standalone-apiman.xml
+      #
+      # Step 7. Comment the apiman-manager parameters
+      #
+	  if [[ "$unamestr" == 'Linux' ]]; then
+ 	    sed -i "s/^apiman-manager/#apiman-manager/g" standalone/configuration/apiman.properties
+      elif [[ "$unamestr" == 'Darwin' ]]; then
+        sed -i '' "s/^apiman-manager/#apiman-manager/g" standalone/configuration/apiman.properties
+      fi
 
-      sed -i "s/apiman.es.protocol=.*$/apiman.es.protocol=$ES_PROTOCOL/g" standalone/configuration/apiman.properties
-      sed -i "s/apiman.es.host=.*$/apiman.es.host=$ES_HOST/g" standalone/configuration/apiman.properties
-      sed -i "s/apiman.es.port=.*$/apiman.es.port=$ES_PORT/g" standalone/configuration/apiman.properties
-      sed -i "s/^apiman-manager/#apiman-manager/g" standalone/configuration/apiman.properties
-
+      #
+      # Step 8. Add the public endpoint of the gateway
+      #
       echo "" >> standalone/configuration/apiman.properties
       echo "# The public endpoint for accessing the API Gateway" >> standalone/configuration/apiman.properties
       echo "apiman-gateway.public-endpoint=$GATEWAY_PUBLIC_ENDPOINT" >> standalone/configuration/apiman.properties
 
       #
-      # Step 6: Change the binding port offset to avoid conflicts
+      # Step 9: Change the binding port offset to avoid conflicts
 	  #
 	  # Apiman Manager offset: 0 (-> 8080, 8443)
 	  # Apiman Gateway offset: 100 (-> 8180, 8543)
    	  # Apiman Keycloak Server offset: 200 (-> 8280, 8643)
 	  #
-      sed -i "s/jboss.socket.binding.port-offset:0/jboss.socket.binding.port-offset:100/g" standalone/configuration/standalone-apiman.xml
+      if [[ "$unamestr" == 'Linux' ]]; then
+        sed -i "s/jboss.socket.binding.port-offset:0/jboss.socket.binding.port-offset:100/g" standalone/configuration/standalone-apiman.xml
+      elif [[ "$unamestr" == 'Darwin' ]]; then
+        sed -i '' "s/jboss.socket.binding.port-offset:0/jboss.socket.binding.port-offset:100/g" standalone/configuration/standalone-apiman.xml
+      fi
 
       echo "####################################################################"
       echo "# Installation complete. You can now start up apiman : API Gateway #"
@@ -275,13 +286,12 @@ while [[ "$COMPONENT" != "5" ]]; do
 		echo "Now you need to tell us where your Keycloak authentication"
 		echo "server is located.  This should be in the form of a URL."
 		echo "An example might be:"
-		echo "    https://localhost:8543/auth"
+		echo "    https://localhost:8443/auth"
 		echo ""
 		read -p "Keycloak URL (default https://localhost:8443/auth for local usage): " KEYCLOAK_URL
 		KEYCLOAK_URL=${KEYCLOAK_URL:-https://localhost:8443/auth}
 		KEYCLOAK_URL_ESC="$(echo $KEYCLOAK_URL | sed 's/[\/]/\\\//g')"
-
-		echo "Keycloak url : $KEYCLOAK_URL; escaped : $KEYCLOAK_URL_ESC"
+		echo "Keycloak URL : $KEYCLOAK_URL; escaped : $KEYCLOAK_URL_ESC"
 
 		# 
 		# Step 1 : Configure Database (h2, MySQL, PostGresQL)
@@ -294,22 +304,11 @@ while [[ "$COMPONENT" != "5" ]]; do
 		echo "Database Type:"
 		echo "  1. mysql"
 		echo "  2. postresql"
-		echo "  3. h2"
+		echo "  3. h2 (default)"
 		read -p "Choose: " DATABASE_TYPE
+	    DATABASE_TYPE=${DATABASE_TYPE:-3}
 
-		if [ "$DATABASE_TYPE" = "1" ]
-        then
-          echo "OK, mysql it is!"
-		elif [ "$DATABASE_TYPE" = "2" ]
-        then
-           echo "OK, postgresql it is!"
-		elif [ "$DATABASE_TYPE" = "3" ]
-		then
-		  echo "OK, h2 it is!"
-		else
-		  echo "Sorry, invalid database type!  Exiting..."
-		  exit 1
-		fi
+        echo "Database selected : $DATABASE_TYPE !!"
 
 		if [ "$DATABASE_TYPE" = "1" ] || [ "$DATABASE_TYPE" = "2" ]
 		then
@@ -342,9 +341,16 @@ while [[ "$COMPONENT" != "5" ]]; do
 		echo ""
 		read -p "Elastic URL (default: http://localhost:9200): " ELASTIC_URL
 		ELASTIC_URL=${ELASTIC_URL:-http://localhost:9200}
-		ES_PROTOCOL=`echo $ELASTIC_URL | sed -r 's/(https?).*/\1/g'`
-		ES_HOST=`echo $ELASTIC_URL | sed -r 's/https?:\/\/([^\:^\/]+)\:?[0-9]*\/?.*/\1/g'`
-		ES_PORT=`echo $ELASTIC_URL | sed -r 's/https?\:\/\/[^\:]+\:?([0-9]+)?.*/\1/g'`
+        if [[ "$unamestr" == 'Linux' ]]; then
+          ES_PROTOCOL=`echo $ELASTIC_URL | sed -r 's/(https?).*/\1/g'`
+          ES_HOST=`echo $ELASTIC_URL | sed -r 's/https?:\/\/([^\:^\/]+)\:?[0-9]*\/?.*/\1/g'`
+          ES_PORT=`echo $ELASTIC_URL | sed -r 's/https?\:\/\/[^\:]+\:?([0-9]+)?.*/\1/g'`
+        elif [[ "$unamestr" == 'Darwin' ]]; then
+          ES_PROTOCOL=`echo $ELASTIC_URL | sed -E 's/(https?).*/\1/g'`
+          ES_HOST=`echo $ELASTIC_URL | sed -E 's/https?:\/\/([^\:^\/]+)\:?[0-9]*\/?.*/\1/g'`
+          ES_PORT=`echo $ELASTIC_URL | sed -E 's/https?\:\/\/[^\:]+\:?([0-9]+)?.*/\1/g'`
+        fi
+
 		echo ""
 		echo "Thanks!  Will use the following elasticsearch info:"
 		echo "---------------------------------------------------------"
@@ -358,7 +364,9 @@ while [[ "$COMPONENT" != "5" ]]; do
 		#
 		# Step 3. Download and unzip Wildfly, Apiman
 		#
-		rm -rf $INSTALL_DIRECTORY/apiman-manager-$APIMAN_VERSION
+		if [ -d "$INSTALL_DIRECTORY/apiman-manager-$APIMAN_VERSION" ]; then
+		  rm -rf $INSTALL_DIRECTORY/apiman-manager-$APIMAN_VERSION
+	    fi
 		mkdir $INSTALL_DIRECTORY/apiman-manager-$APIMAN_VERSION
 	    cd $INSTALL_DIRECTORY/apiman-manager-$APIMAN_VERSION
 	    curl http://downloads.jboss.org/wildfly/${WILDFLY_VERSION}/wildfly-${WILDFLY_VERSION}.zip -o wildfly-${WILDFLY_VERSION}.zip
@@ -374,25 +382,68 @@ while [[ "$COMPONENT" != "5" ]]; do
 		rm standalone/deployments/apiman-gateway-api.war
 		rm standalone/deployments/apiman-gateway.war
 
+		#
+		# Step 5. Comment the apiman-gateway parameters
+		#
+		if [[ "$unamestr" == 'Linux' ]]; then
+ 		  sed -i "s/^apiman-gateway/#apiman-gateway/g" standalone/configuration/apiman.properties
+        elif [[ "$unamestr" == 'Darwin' ]]; then
+          sed -i '' "s/^apiman-gateway/#apiman-gateway/g" standalone/configuration/apiman.properties
+        fi
+
+        #
+        # Step 6. Configure External ElasticSearch Server
+        #
+        sed -i '' "s/apiman.es.protocol=.*$/apiman.es.protocol=$ES_PROTOCOL/g" standalone/configuration/apiman.properties
+        sed -i '' "s/apiman.es.host=.*$/apiman.es.host=$ES_HOST/g" standalone/configuration/apiman.properties
+        sed -i '' "s/apiman.es.port=.*$/apiman.es.port=$ES_PORT/g" standalone/configuration/apiman.properties
+
+        #
+        # Step 7. Setup the Database parameters (MySQL, PostgreSQL)
+        #
+        if [ "x$DATABASE_TYPE" = "x1" ]
+        then
+          HIBERNATE_DIALECT=org.hibernate.dialect.MySQL5Dialect
+          curl https://repo1.maven.org/maven2/mysql/mysql-connector-java/5.1.33/mysql-connector-java-5.1.33.jar -o ~/apiman-manager-$APIMAN_VERSION/wildfly-9.0.2.Final/standalone/deployments/mysql-connector-java-5.1.33-bin.jar
+          cp ~/apiman-manager-$APIMAN_VERSION/wildfly-9.0.2.Final/apiman/sample-configs/apiman-ds_mysql.xml ~/apiman-manager-$APIMAN_VERSION/wildfly-9.0.2.Final/standalone/deployments/apiman-ds.xml
+          sed -i "s/MYSQLSERVER/$DATABASE_HOST/g" ~/apiman-manager-$APIMAN_VERSION/wildfly-9.0.2.Final/standalone/deployments/apiman-ds.xml
+          sed -i "s/3306/$DATABASE_PORT/g" ~/apiman-manager-$APIMAN_VERSION/wildfly-9.0.2.Final/standalone/deployments/apiman-ds.xml
+          sed -i "s/^apiman.hibernate.dialect=.*$/apiman.hibernate.dialect=$HIBERNATE_DIALECT/g" ~/apiman-manager-$APIMAN_VERSION/wildfly-9.0.2.Final/standalone/configuration/apiman.properties
+          sed -i "s/DBUSER/$DATABASE_USER/g" ~/apiman-manager-$APIMAN_VERSION/wildfly-9.0.2.Final/standalone/deployments/apiman-ds.xml
+          sed -i "s/DBPASS/$DATABASE_PASSWORD/g" ~/apiman-manager-$APIMAN_VERSION/wildfly-9.0.2.Final/standalone/deployments/apiman-ds.xml
+        elif [ "x$DATABASE_TYPE" = "x2" ]
+        then
+          HIBERNATE_DIALECT=org.hibernate.dialect.PostgreSQLDialect
+          curl https://repo1.maven.org/maven2/org/postgresql/postgresql/9.3-1102-jdbc41/postgresql-9.3-1102-jdbc41.jar -o ~/apiman-manager-$APIMAN_VERSION/wildfly-9.0.2.Final/standalone/deployments/postgresql-9.3-1102.jdbc41.jar
+          cp ~/apiman-manager-$APIMAN_VERSION/wildfly-9.0.2.Final/apiman/sample-configs/apiman-ds_postgresql.xml ~/apiman-manager-$APIMAN_VERSION/wildfly-9.0.2.Final/standalone/deployments/apiman-ds.xml
+          sed -i "s/POSTGRESQLSERVER/$DATABASE_HOST/g" ~/apiman-manager-$APIMAN_VERSION/wildfly-9.0.2.Final/standalone/deployments/apiman-ds.xml
+          sed -i "s/5432/$DATABASE_PORT/g" ~/apiman-manager-$APIMAN_VERSION/wildfly-9.0.2.Final/standalone/deployments/apiman-ds.xml
+          sed -i "s/^apiman.hibernate.dialect=.*$/apiman.hibernate.dialect=$HIBERNATE_DIALECT/g" ~/apiman-manager-$APIMAN_VERSION/wildfly-9.0.2.Final/standalone/configuration/apiman.properties
+          sed -i "s/DBUSER/$DATABASE_USER/g" ~/apiman-manager-$APIMAN_VERSION/wildfly-9.0.2.Final/standalone/deployments/apiman-ds.xml
+          sed -i "s/DBPASS/$DATABASE_PASSWORD/g" ~/apiman-manager-$APIMAN_VERSION/wildfly-9.0.2.Final/standalone/deployments/apiman-ds.xml
+        fi
 
 		#
-		# Step 5. Comment the gateway properties
-		#
-		sed -i "s/^apiman-gateway/#apiman-gateway/g" standalone/configuration/apiman.properties
-
-		#
-		# Step 6. Change the binding port offset to avoid conflicts
+		# Step 8. Change the binding port offset to avoid conflicts
 		#
 		# Apiman Manager offset: 0 (-> 8080, 8443)
 		# Apiman Gateway offset: 100 (-> 8180, 8543)
 		# Apiman Keycloak Server offset: 200 (-> 8280, 8643)
 		#
-        sed -i "s/jboss.socket.binding.port-offset:0/jboss.socket.binding.port-offset:0/g" standalone/configuration/standalone-apiman.xml
+        if [[ "$unamestr" == 'Linux' ]]; then
+          sed -i "s/jboss.socket.binding.port-offset:0/jboss.socket.binding.port-offset:0/g" standalone/configuration/standalone-apiman.xml
+        elif [[ "$unamestr" == 'Darwin' ]]; then
+          sed -i '' "s/jboss.socket.binding.port-offset:0/jboss.socket.binding.port-offset:0/g" standalone/configuration/standalone-apiman.xml
+        fi
 
         #
-        # Step 7. Use External Keycloak Server
+        # Step 9. Use External Keycloak Server. Can also be used for local access with this address https://localhost:8443/auth
         #
-        sed -i "s/<kc\:auth-server-url>\/auth<\/kc\:auth-server-url>/<kc\:auth-server-url>$KEYCLOAK_URL_ESC<\/kc\:auth-server-url>/g" standalone/configuration/standalone-apiman.xml
+        if [[ "$unamestr" == 'Linux' ]]; then
+          sed -i "s/<kc\:auth-server-url>\/auth<\/kc\:auth-server-url>/<kc\:auth-server-url>$KEYCLOAK_URL_ESC<\/kc\:auth-server-url>/g" standalone/configuration/standalone-apiman.xml
+        elif [[ "$unamestr" == 'Darwin' ]]; then
+          sed -i '' "s/\(<auth-server-url>\).*\(<\/auth-server-url\)/\1$KEYCLOAK_URL_ESC\2/" standalone/configuration/standalone-apiman.xml
+        fi
 
 	    echo "####################################################################"
 	    echo "# Installation complete. You can now start up apiman : API Manager #"
@@ -402,9 +453,7 @@ while [[ "$COMPONENT" != "5" ]]; do
 	    echo "    ./bin/standalone.sh -b 0.0.0.0 -c standalone-apiman.xml"
 	    echo "#                                                                  #"
 	    echo "####################################################################"
-
 	fi
-
 done
 
 
