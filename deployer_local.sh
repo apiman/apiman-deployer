@@ -78,6 +78,41 @@ while [[ "$COMPONENT" != "5" ]]; do
 		echo ""
 	fi
 
+	if [ "x$COMPONENT" = "x2" ]
+    then
+      echo "###############################################################"
+      echo "# Installing Keycloak for apiman...                           #"
+      echo "###############################################################"
+      echo ""
+      rm -rf $INSTALL_DIRECTORY/apiman-keycloak-$APIMAN_VERSION
+      mkdir $INSTALL_DIRECTORY/apiman-keycloak-$APIMAN_VERSION
+      cd $INSTALL_DIRECTORY/apiman-keycloak-$APIMAN_VERSION
+      curl http://downloads.jboss.org/wildfly/${WILDFLY_VERSION}/wildfly-${WILDFLY_VERSION}.zip -o wildfly-${WILDFLY_VERSION}.zip
+      curl http://downloads.jboss.org/apiman/$APIMAN_VERSION/apiman-distro-wildfly9-$APIMAN_VERSION-overlay.zip -o apiman-distro-wildfly9-$APIMAN_VERSION-overlay.zip
+      unzip wildfly-${WILDFLY_VERSION}.zip
+      unzip -o apiman-distro-wildfly9-$APIMAN_VERSION-overlay.zip -d wildfly-${WILDFLY_VERSION}
+      cd wildfly-${WILDFLY_VERSION}
+      rm -f standalone/deployments/apiman*
+
+      #
+      # Change the binding port offset to avoid conflicts
+	  #
+	  # Apiman Manager offset: 0 (-> 8080, 8443)
+	  # Apiman Gateway offset: 100 (-> 8180, 8543)
+	  # Apiman Keycloak Server offset: 200 (-> 8280, 8643)
+	  #
+      sed -i "s/jboss.socket.binding.port-offset:0/jboss.socket.binding.port-offset:200/g" standalone/configuration/standalone-apiman.xml
+
+      echo "####################################################################"
+      echo "# Installation complete. You can now start up Keycloak for apiman  #"
+      echo "# with the following commands:                                     #"
+      echo "#                                                                  #"
+      echo "    cd ~/apiman-keycloak-$APIMAN_VERSION/wildfly-9.0.2.Final"
+      echo "    ./bin/standalone.sh -b 0.0.0.0 -c standalone-apiman.xml"
+      echo "#                                                                  #"
+      echo "####################################################################"
+    fi
+
 	if [ "x$COMPONENT" = "x3" ]
     then
       echo "###############################################################"
@@ -155,7 +190,7 @@ while [[ "$COMPONENT" != "5" ]]; do
 
       rm -rf $INSTALL_DIRECTORY/apiman-gateway-$APIMAN_VERSION
       mkdir $INSTALL_DIRECTORY/apiman-gateway-$APIMAN_VERSION
-      cd $INSTALL_DIRECTORY/apiman-manager-$APIMAN_VERSION
+      cd $INSTALL_DIRECTORY/apiman-gateway-$APIMAN_VERSION
       curl http://downloads.jboss.org/wildfly/${WILDFLY_VERSION}/wildfly-${WILDFLY_VERSION}.zip -o wildfly-${WILDFLY_VERSION}.zip
       curl http://downloads.jboss.org/apiman/$APIMAN_VERSION/apiman-distro-wildfly9-$APIMAN_VERSION-overlay.zip -o apiman-distro-wildfly9-$APIMAN_VERSION-overlay.zip
       unzip wildfly-${WILDFLY_VERSION}.zip
@@ -208,11 +243,11 @@ while [[ "$COMPONENT" != "5" ]]; do
       #
       # Step 6: Change the binding port offset to avoid conflicts
 	  #
-	  # Apiman Manager offset: 100 (-> 8180, 8543)
-	  # Apiman Gateway offset: 200 (-> 8280, 8643)
-	  # Apiman Keycloak Server offset: 300 (-> 8380, 8743)
+	  # Apiman Manager offset: 0 (-> 8080, 8443)
+	  # Apiman Gateway offset: 100 (-> 8180, 8543)
+   	  # Apiman Keycloak Server offset: 200 (-> 8280, 8643)
 	  #
-      sed -i "s/jboss.socket.binding.port-offset:0/jboss.socket.binding.port-offset:200/g" standalone/configuration/standalone-apiman.xml
+      sed -i "s/jboss.socket.binding.port-offset:0/jboss.socket.binding.port-offset:100/g" standalone/configuration/standalone-apiman.xml
 
       echo "####################################################################"
       echo "# Installation complete. You can now start up apiman : API Gateway #"
@@ -242,8 +277,8 @@ while [[ "$COMPONENT" != "5" ]]; do
 		echo "An example might be:"
 		echo "    https://localhost:8543/auth"
 		echo ""
-		read -p "Keycloak URL (default https://localhost:8543/auth for local usage): " KEYCLOAK_URL
-		KEYCLOAK_URL=${KEYCLOAK_URL:-https://localhost:8543/auth}
+		read -p "Keycloak URL (default https://localhost:8443/auth for local usage): " KEYCLOAK_URL
+		KEYCLOAK_URL=${KEYCLOAK_URL:-https://localhost:8443/auth}
 		KEYCLOAK_URL_ESC="$(echo $KEYCLOAK_URL | sed 's/[\/]/\\\//g')"
 
 		echo "Keycloak url : $KEYCLOAK_URL; escaped : $KEYCLOAK_URL_ESC"
@@ -332,7 +367,6 @@ while [[ "$COMPONENT" != "5" ]]; do
 	    unzip -o apiman-distro-wildfly9-$APIMAN_VERSION-overlay.zip -d wildfly-${WILDFLY_VERSION}
 	    cd wildfly-${WILDFLY_VERSION}
 
-
 		#
 		# Step 4. Remove the gateway war files
 		#
@@ -349,11 +383,16 @@ while [[ "$COMPONENT" != "5" ]]; do
 		#
 		# Step 6. Change the binding port offset to avoid conflicts
 		#
-		# Apiman Manager offset: 100 (-> 8180, 8543)
-		# Apiman Gateway offset: 200 (-> 8280, 8643)
-		# Apiman Keycloak Server offset: 300 (-> 8380, 8743)
+		# Apiman Manager offset: 0 (-> 8080, 8443)
+		# Apiman Gateway offset: 100 (-> 8180, 8543)
+		# Apiman Keycloak Server offset: 200 (-> 8280, 8643)
 		#
-        sed -i "s/jboss.socket.binding.port-offset:0/jboss.socket.binding.port-offset:100/g" standalone/configuration/standalone-apiman.xml
+        sed -i "s/jboss.socket.binding.port-offset:0/jboss.socket.binding.port-offset:0/g" standalone/configuration/standalone-apiman.xml
+
+        #
+        # Step 7. Use External Keycloak Server
+        #
+        sed -i "s/<kc\:auth-server-url>\/auth<\/kc\:auth-server-url>/<kc\:auth-server-url>$KEYCLOAK_URL_ESC<\/kc\:auth-server-url>/g" standalone/configuration/standalone-apiman.xml
 
 	    echo "####################################################################"
 	    echo "# Installation complete. You can now start up apiman : API Manager #"
