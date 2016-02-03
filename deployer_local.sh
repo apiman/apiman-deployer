@@ -41,6 +41,7 @@ while [[ "$COMPONENT" != "5" ]]; do
 	echo ""
 	echo ""
 	echo "Currently supported components:"
+	echo "    0. All in one (Manager, h2, Gateway, Elasticsearch & Keycloak)"
 	echo "    1. Elasticsearch (for metrics)"
 	echo "    2. Keycloak Authentication Server"
 	echo "    3. apiman: API Gateway"
@@ -48,6 +49,45 @@ while [[ "$COMPONENT" != "5" ]]; do
 	echo "    5. Exit"
 	read -p "Which component would you like to deploy? " COMPONENT
 
+	if [ "$COMPONENT" = "0" ]
+	then
+      echo "###############################################################"
+      echo "# Installing Apiman All in One  ...                           #"
+      echo "###############################################################"
+      echo ""
+      if [ -d "$INSTALL_DIRECTORY/apiman-all-$APIMAN_VERSION" ]; then
+		  rm -rf $INSTALL_DIRECTORY/apiman-all-$APIMAN_VERSION
+	  fi
+      mkdir -p $INSTALL_DIRECTORY/apiman-all-$APIMAN_VERSION
+      cd $INSTALL_DIRECTORY/apiman-all-$APIMAN_VERSION
+      curl http://downloads.jboss.org/wildfly/${WILDFLY_VERSION}/wildfly-${WILDFLY_VERSION}.zip -o wildfly-${WILDFLY_VERSION}.zip
+      curl http://downloads.jboss.org/apiman/$APIMAN_VERSION/apiman-distro-wildfly9-$APIMAN_VERSION-overlay.zip -o apiman-distro-wildfly9-$APIMAN_VERSION-overlay.zip
+      unzip wildfly-${WILDFLY_VERSION}.zip
+      unzip -o apiman-distro-wildfly9-$APIMAN_VERSION-overlay.zip -d wildfly-${WILDFLY_VERSION}
+      cd wildfly-${WILDFLY_VERSION}
+
+      #
+      # Use default binding offset which is '0'
+	  #
+      if [[ "$unamestr" == 'Linux' ]]; then
+        sed -i "s/jboss.socket.binding.port-offset:0/jboss.socket.binding.port-offset:0/g" standalone/configuration/standalone-apiman.xml
+      elif [[ "$unamestr" == 'Darwin' ]]; then
+        sed -i '' "s/jboss.socket.binding.port-offset:0/jboss.socket.binding.port-offset:0/g" standalone/configuration/standalone-apiman.xml
+      fi
+
+	    echo "######################################################################"
+	    echo "# Installation complete. You can now start up apiman                 #"
+	    echo "# with the following commands:                                       #"
+	    echo "#                                                                    #"
+	    echo "    cd $INSTALL_DIRECTORY/apiman-all-$APIMAN_VERSION/wildfly-${WILDFLY_VERSION}"
+	    echo "    ./bin/standalone.sh -b 0.0.0.0 -c standalone-apiman.xml"
+	    echo "#                                                                    #"
+	    echo "#  Apiman Manager : http://localhost:8080/apimanui                   #"
+	    echo "#  Keycloak UI    : http://localhost:8080/auth/admin/master/console  #"
+	    echo "#  User : admin and password : admin123!                             #"
+	    echo "#                                                                    #"
+	    echo "######################################################################"
+	fi
 
 	if [ "$COMPONENT" = "1" ]
 	then
@@ -88,7 +128,7 @@ while [[ "$COMPONENT" != "5" ]]; do
       echo "###############################################################"
       echo ""
       if [ -d "$INSTALL_DIRECTORY/apiman-keycloak-$APIMAN_VERSION" ]; then
-		  rm -rf rm -rf $INSTALL_DIRECTORY/apiman-keycloak-$APIMAN_VERSION
+		  rm -rf $INSTALL_DIRECTORY/apiman-keycloak-$APIMAN_VERSION
 	  fi
       mkdir -p $INSTALL_DIRECTORY/apiman-keycloak-$APIMAN_VERSION
       cd $INSTALL_DIRECTORY/apiman-keycloak-$APIMAN_VERSION
@@ -445,7 +485,7 @@ while [[ "$COMPONENT" != "5" ]]; do
           sed -i '' "s/\(<auth-server-url>\).*\(<\/auth-server-url\)/\1$KEYCLOAK_URL_ESC\2/" standalone/configuration/standalone-apiman.xml
         fi
 
-	    echo "####################################################################"
+	    echo "#######################################git@github.com:apiman/apiman-deployer.git#############################"
 	    echo "# Installation complete. You can now start up apiman : API Manager #"
 	    echo "# with the following commands:                                     #"
 	    echo "#                                                                  #"
