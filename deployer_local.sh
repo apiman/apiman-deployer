@@ -11,16 +11,16 @@ read -p "Directory to install the components (default: home directory): " INSTAL
 INSTALL_DIRECTORY=${INSTALL_DIRECTORY:-~}
 echo "Components will be installed here : $INSTALL_DIRECTORY"
 
-read -p "Please enter the version of Apiman to be installed (default: 1.2.1): " APIMAN_VERSION
-APIMAN_VERSION=${APIMAN_VERSION:-1.2.1.Final}
+read -p "Please enter the version of Apiman to be installed (default: 1.2.5.Final): " APIMAN_VERSION
+APIMAN_VERSION=${APIMAN_VERSION:-1.2.5.Final}
 echo $APIMAN_VERSION
 
 read -p "Please enter the version of ElasticSearch to be installed (default: 1.7.2): " ELASTIC_VERSION
 ELASTIC_VERSION=${ELASTIC_VERSION:-1.7.2}
 echo $ELASTIC_VERSION
 
-read -p "Version of WildFly (default: 9.0.2.Final):" WILDFLY_VERSION
-WILDFLY_VERSION=${WILDFLY_VERSION:-9.0.2.Final}
+read -p "Version of WildFly (default: 10.0.0.Final):" WILDFLY_VERSION
+WILDFLY_VERSION=${WILDFLY_VERSION:-10.0.0.Final}
 echo $WILDFLY_VERSION
 echo ""
 echo "Next steps ..."
