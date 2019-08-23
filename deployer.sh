@@ -1,6 +1,6 @@
 #!/bin/sh
 
-APIMAN_VERSION=
+APIMAN_VERSION=1.5.2.Final
 ELASTIC_VERSION=1.7.2
 
 echo "###############################################################"
